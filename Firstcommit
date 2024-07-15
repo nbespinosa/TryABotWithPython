@@ -1,0 +1,61 @@
+import telebot
+
+TOKEN = "7323886421:AAGlHAw8Sk8H1sqCzjL6qUWeok3ja01AWUg"  
+
+bot = telebot.TeleBot(TOKEN)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+encuestas = {
+    "Color favorito": {
+        "question": "¿Cuál es tu color favorito?",
+        "options": ["Rojo", "Azul", "Verde", "Amarillo"],
+        "correct_answer": "Azul"
+    }
+}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+respuestas = {}
+
+@bot.message_handler(commands=['start'])
+def start_menu(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(telebot.types.KeyboardButton("Encuesta"))
+    markup.add(telebot.types.KeyboardButton("Tabla de contenidos"))
+    
+    # Mensaje de bienvenida con dos líneas
+    welcome_message = "Hola,\npara usar el bot observa las opciones del menú"
+    bot.send_message(message.chat.id, welcome_message, reply_markup=markup)
+
+@bot.message_handler(func=lambda message: message.text == "Encuesta")
+def send_poll(message):
+    question = "¿Cuál es tu fruta favorita?"
+    options = ["Manzana", "Plátano", "Fresa", "Mango"]
+    bot.send_poll(message.chat.id, question, options)
+
+@bot.message_handler(func=lambda message: message.text == "Tabla de contenidos")
+def show_table_of_contents(message):
+    markup = telebot.types.InlineKeyboardMarkup()
+    markup.add(telebot.types.InlineKeyboardButton(text="Color favorito", callback_data="Color favorito"))
+    bot.send_message(message.chat.id, "Elige una encuesta:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "Color favorito")
+def handle_color_poll(call):
+    encuesta = encuestas["Color favorito"]
+    markup = telebot.types.InlineKeyboardMarkup()
+    for option in encuesta["options"]:
+        markup.add(telebot.types.InlineKeyboardButton(text=option, callback_data=option))
+    bot.send_message(call.message.chat.id, encuesta["question"], reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data in encuestas["Color favorito"]["options"])
+def handle_color_answer(call):
+    selected_option = call.data
+    correct_answer = encuestas["Color favorito"]["correct_answer"]
+    if selected_option == correct_answer:
+        bot.answer_callback_query(call.id, "¡Correcto! Azul es el color del mar.", show_alert=True)
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+        bot.send_message(call.message.chat.id, f"✅ {selected_option} es correcto.")
+    else:
+        bot.answer_callback_query(call.id, "Incorrecto. Azul es el color del mar.", show_alert=True)
+        bot.send_message(call.message.chat.id, f"❌ {selected_option} es incorrecto. Azul es el color del mar.")
+
+bot.polling()
