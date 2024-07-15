@@ -1,4 +1,5 @@
 import telebot
+# Bot en telegram @onanananabot
 
 TOKEN = "7323886421:AAGlHAw8Sk8H1sqCzjL6qUWeok3ja01AWUg"  
 
@@ -57,5 +58,45 @@ def handle_color_answer(call):
     else:
         bot.answer_callback_query(call.id, "Incorrecto. Azul es el color del mar.", show_alert=True)
         bot.send_message(call.message.chat.id, f"❌ {selected_option} es incorrecto. Azul es el color del mar.")
+
+bot.polling()
+
+# Para recomendaciones de preguntas 
+# Bot en telegram @AlphaCentaury_bot
+import telebot
+
+import os
+
+archivo = 'sugerencias.txt'
+ruta_completa = os.path.abspath(archivo)
+
+print("La ruta completa del archivo sugerencias.txt es:", ruta_completa)
+
+
+TOKEN = '6630031896:AAHZ6Fu53kbpa4PY3dTsleHnRHl4v0nHwsQ'
+
+
+bot = telebot.TeleBot(TOKEN)
+
+
+@bot.message_handler(commands=['start'])
+def handle_suggestion_command(message):
+    bot.reply_to(message, "¡Hola! 😃 Somos el colectivo de Alpha Centauri 💫 y nos encantaría saber tu opinión 🤓. ¿Tienes alguna sugerencia para mejorar nuestra comunidad? 🤔 envíala de forma anónima 📭🤫.")
+
+
+@bot.message_handler(func=lambda message: True)
+def handle_all_messages(message):
+    with open('sugerencias.txt', 'a') as file:
+        file.write(message.chat.username+" "+message.text + '\n')
+    bot.reply_to(message, message.chat.username +" Sugerencia recibida ☺️, la tendremos en cuenta para mejorar 🙌 ¡Gracias por ser parte de nuestra comunidad! 😏🌌")
+
+@bot.message_handler(commands=['menu'])
+def handle_menu(message):
+    bot.reply_to(message, "Este es el menú:\n/sugerencia - Enviar una sugerencia anónima")
+
+
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    bot.reply_to(message, "Lo siento 😓, no entiendo ese comando. Por favor usa /menu 😼 para ver las opciones disponibles 😁.")
 
 bot.polling()
