@@ -1,0 +1,705 @@
+#Main Code
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+pip install pyTelegramBotAPI
+import telebot
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# Configuración del bot
+TOKEN = "7323886421:AAGlHAw8Sk8H1sqCzjL6qUWeok3ja01AWUg"      #una clave única que permite la interacción entre un bot y la API de Telegram. Este token es esencial para que el bot pueda recibir y enviar mensajes, así como ejecutar diversas funciones dentro de la plataforma.
+bot = telebot.TeleBot(TOKEN)
+
+# Para almacenar preguntas 
+encuestas = {
+    "Biomoléculas": {
+        "Tema 1": {
+            1: {
+                "question": "¿h?",
+                "options": ["u", "g", "b", "p"],
+                "correct_answer": "g",
+                "explanation": "i."
+            }
+        },
+        "Tema 2": {
+            1: {
+                "question": "¿fg?",
+                "options": ["vg", "gh", "oi", "oks"],
+                "correct_answer": "oks",
+                "explanation": "o."
+            }
+        },
+        "Tema 3": {
+            1: {
+                "question": "¿jh?",
+                "options": ["lkjh", "gg", "yt", "iuyg"],
+                "correct_answer": "gg",
+                "explanation": "jgvcxx"
+            }
+        }
+    },
+    "Metabolismo": {
+        "Tema 1": {
+            1: {
+                "question": "¿Qué proceso convierte glucosa en energía?",
+                "options": ["Fotosíntesis", "Respiración celular", "Fermentación", "Gluconeogénesis"],
+                "correct_answer": "Respiración celular",
+                "explanation": ("La respiración celular es el proceso mediante el cual "
+                                "las células obtienen energía a partir de glucosa.")
+            },
+            2: {
+                "question": "¿Cuál es el principal producto de la respiración celular?",
+                "options": ["Glucosa", "Oxígeno", "Dióxido de carbono", "ATP"],
+                "correct_answer": "ATP",
+                "explanation": ("El ATP es el principal producto energético de la "
+                                "respiración celular.")
+            }
+        },
+        # Tema 2
+        "Tema 2": {
+            1: {
+                "question": ("¿Qué es la gluconeogénesis?"),
+                "options": [
+                    "Producción de glucosa a partir de aminoácidos",
+                    "Descomposición de glucógeno",
+                    "Conversión de lactato en glucosa",
+                    "Síntesis de ácidos grasos"
+                ],
+                "correct_answer": ("Producción de glucosa a partir de aminoácidos"),
+                "explanation": ("La gluconeogénesis es la síntesis de glucosa a partir "
+                                "de compuestos no carbohidratados.")
+            }
+        },
+        # Tema 3
+        "Tema 3": {
+            1: {
+                "question": ("¿Qué molécula es el principal transportador de energía en la célula?"),
+                "options": ["ADN", "ARN", "ATP", "NADH"],
+                "correct_answer": ("ATP"),
+                "explanation": ("El ATP (adenosín trifosfato) es la principal moneda "
+                                "energética en las células.")
+            }
+        }
+    }
+}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@bot.message_handler(commands=['start'])
+def start_menu(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add(telebot.types.KeyboardButton("Asignaturas"))
+    markup.add(telebot.types.KeyboardButton("Preguntas"))
+
+    welcome_message = 'Hola! 😊, para usar el bot observa las opciones del menú'
+    bot.send_message(message.chat.id, welcome_message, reply_markup=markup)
+
+@bot.message_handler(commands=['start_1'])
+def restart_chat(message):
+    start_menu(message)  # Reinicia mostrando nuevamente el menú
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+@bot.message_handler(func=lambda message: message.text == 'Asignaturas')
+def show_asignaturas(message):
+    markup = telebot.types.InlineKeyboardMarkup()
+    markup.add(telebot.types.InlineKeyboardButton(text="Metabolismo", callback_data="metabolismo"))
+    #markup.add(telebot.types.InlineKeyboardButton(text="Biomoléculas", callback_data="biomoleculas"))
+
+    bot.send_message(message.chat.id, 'Selecciona una asignatura:', reply_markup=markup)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+@bot.callback_query_handler(func=lambda call: call.data in ["biomoleculas", "metabolismo"])
+def show_topics(call):
+    subject = call.data.capitalize()
+
+    markup = telebot.types.InlineKeyboardMarkup()
+    for i in range(1, 4):
+        markup.add(telebot.types.InlineKeyboardButton(text=f"Tema {i}", callback_data=f"tema_{i}_{subject}"))
+
+    markup.add(telebot.types.InlineKeyboardButton(text="Preguntas aleatorias", callback_data=f"preguntas_{subject}"))
+
+    bot.send_message(call.message.chat.id, f'Selecciona un tema para {subject}:', reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("tema_"))
+def handle_topic_selection(call):
+    topic_info = call.data.split("_")
+    topic_number = topic_info[1]
+    subject = topic_info[2]
+
+    # Verificar si el tema existe
+    if subject in encuestas and f"Tema {topic_number}" in encuestas[subject]:
+        question_data = encuestas[subject][f"Tema {topic_number}"]
+
+        # Crear teclado para opciones
+        markup = telebot.types.InlineKeyboardMarkup()
+
+        # Acceder a la primera pregunta
+        if isinstance(question_data, dict):
+            first_question_key = min(question_data.keys())  # Obtener la primera pregunta
+            first_question = question_data[first_question_key]
+
+            for option in first_question["options"]:
+                markup.add(telebot.types.InlineKeyboardButton(text=option, callback_data=f"respuesta_{topic_number}_{subject.lower()}_{option.replace(' ', '_')}"))
+
+            bot.send_message(call.message.chat.id, first_question["question"], reply_markup=markup)
+        else:
+            bot.send_message(call.message.chat.id, f"No se encontró preguntas válidas para {subject}, Tema {topic_number}.")
+    else:
+        bot.send_message(call.message.chat.id, f"No se encontró el tema {topic_number} para {subject}.")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("respuesta_"))
+def handle_answer_selection(call):
+    answer_info = call.data.split("_")
+    topic_number = answer_info[1]
+    subject = answer_info[2].capitalize()
+    selected_answer = answer_info[3].replace('_', ' ')  # Reemplazar '_' por espacio
+
+    # Obtener todas las preguntas del tema
+    question_data = encuestas[subject][f"Tema {topic_number}"]
+
+    # Encontrar la pregunta actual basada en la respuesta
+    current_question_index = None
+    for key, value in question_data.items():
+        if selected_answer in value["options"]:
+            current_question_index = key
+            break
+
+    # Verificar si se encontró la pregunta actual
+    if current_question_index is not None:
+        current_question_data = question_data[current_question_index]
+        correct_answer = current_question_data["correct_answer"]
+        explanation = current_question_data["explanation"]
+
+        if selected_answer.lower() == correct_answer.lower():
+            bot.send_message(call.message.chat.id, f"¡Correcto!")
+        else:
+            bot.send_message(call.message.chat.id, f"Incorrecto. La respuesta correcta es: {correct_answer}. {explanation}")
+
+        # Comprobar si hay más preguntas en el tema
+        next_question_key = int(current_question_index) + 1  # Asegurarse de que la clave sea un entero
+        if next_question_key in question_data:
+            next_question_data = question_data[next_question_key]
+
+            # Crear teclado para opciones
+            markup = telebot.types.InlineKeyboardMarkup()
+            for option in next_question_data["options"]:
+                markup.add(telebot.types.InlineKeyboardButton(text=option, callback_data=f"respuesta_{topic_number}_{subject.lower()}_{option.replace(' ', '_')}"))
+
+            bot.send_message(call.message.chat.id, next_question_data["question"], reply_markup=markup)
+        else:
+            bot.send_message(call.message.chat.id, f"No hay más preguntas en {subject}, Tema {topic_number}.")
+    else:
+        bot.send_message(call.message.chat.id, f"No se encontró la pregunta actual.")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+@bot.message_handler(func=lambda message: message.text == 'Preguntas')
+def show_preguntas(message):
+    markup = telebot.types.InlineKeyboardMarkup()
+    markup.add(telebot.types.InlineKeyboardButton(text="Añadir pregunta", callback_data="añadir_pregunta"))
+    
+    bot.send_message(message.chat.id, 'Selecciona una opción:', reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == 'añadir_pregunta')
+def request_question_details(call):
+    bot.send_message(call.message.chat.id,
+                     ("Para agregar una pregunta, por favor proporciona los siguientes detalles:\n"
+                      "- Asignatura (Biomoléculas o Metabolismo)\n"
+                      "- Tema (Tema 1, Tema 2, Tema 3)\n"
+                      "- Pregunta\n"
+                      "- Opciones de respuesta (separadas por comas)\n"
+                      "- Respuesta correcta\n"
+                      "- Explicación de la respuesta correcta\n"
+                      "\nEjemplo:\n"
+                      "- Asignatura: Metabolismo\n"
+                      "- Tema: Tema 1\n"
+                      "- Pregunta: ¿Qué es la fotosíntesis?\n"
+                      "- Opciones: Proceso A, Proceso B, Proceso C\n"
+                      "- Respuesta correcta: Proceso A\n"
+                      "- Explicación: La fotosíntesis es el proceso mediante el cual las plantas producen su alimento."))
+
+    bot.register_next_step_handler(call.message, process_question_details)
+
+def process_question_details(message):
+    details = message.text.splitlines()
+
+    if len(details) < 6:
+        bot.send_message(message.chat.id,
+                         ("Por favor asegúrate de proporcionar todos los detalles requeridos. "
+                          f"Intenta nuevamente."))
+        return
+
+    subject = details[0].split(":")[1].strip()
+    topic = details[1].split(":")[1].strip()
+    
+    question_line = details[2].split(":")
+    
+    if len(question_line) < 2:
+        bot.send_message(message.chat.id,
+                         ("Formato incorrecto para la pregunta. "
+                          f"Asegúrate de usar 'Pregunta: [tu pregunta]'."))
+        return
+    
+    question = question_line[1].strip()
+    
+    options_line = details[3].split(":")[1].strip().split(",")
+    
+    correct_answer_line = details[4].split(":")[1].strip()
+    
+    explanation_line = details[5].split(":")[1].strip()
+
+   # Validar y agregar la nueva pregunta como primera pregunta
+    add_question(subject, topic, question, options_line, correct_answer_line.strip(), explanation_line.strip(), message)
+
+def add_question(subject, topic, question, options, correct_answer, explanation, message):
+   if subject in encuestas and topic in encuestas[subject]:
+       # Crear un nuevo índice para insertar al principio
+       new_index = 1
+
+       # Desplazar las preguntas existentes hacia abajo
+       existing_questions = encuestas[subject][topic]
+       for i in range(len(existing_questions), 0, -1):
+           existing_questions[i + 1] = existing_questions[i]
+
+       # Agregar la nueva pregunta como primera
+       existing_questions[new_index] = {
+           'question': question,
+           'options': options,
+           'correct_answer': correct_answer,
+           'explanation': explanation
+       }
+
+       bot.send_message(message.chat.id,
+                        f"Pregunta añadida exitosamente al {subject}, {topic}.")
+   else:
+       bot.send_message(message.chat.id,
+                        f"No se encontró el tema {topic} en {subject}.")
+
+# Iniciar el bot
+if __name__ == "__main__":
+   bot.polling()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# For ADDING
+import telebot
+
+# Configuración del bot
+TOKEN = "7323886421:AAGlHAw8Sk8H1sqCzjL6qUWeok3ja01AWUg"
+bot = telebot.TeleBot(TOKEN)
+
+# Diccionario para almacenar encuestas
+encuestas = {
+    "Biomoléculas": {
+        "Tema 1": {
+            1: {
+                "question": "¿h?",
+                "options": ["u", "g", "b", "p"],
+                "correct_answer": "g",
+                "explanation": "i."
+            }
+        },
+        "Tema 2": {
+            1: {
+                "question": "¿fg?",
+                "options": ["vg", "gh", "oi", "oks"],
+                "correct_answer": "oks",
+                "explanation": "o."
+            }
+        },
+        "Tema 3": {
+            1: {
+                "question": "¿jh?",
+                "options": ["lkjh", "gg", "yt", "iuyg"],
+                "correct_answer": "gg",
+                "explanation": "jgvcxx"
+            }
+        }
+    },
+    "Metabolismo": {
+        # Cambiamos la estructura para usar índices
+        "Tema 1": {
+            1: {
+                "question": "¿Qué proceso convierte glucosa en energía?",
+                "options": ["Fotosíntesis", "Respiración celular", "Fermentación", "Gluconeogénesis"],
+                "correct_answer": "Respiración celular",
+                "explanation": ("La respiración celular es el proceso mediante el cual "
+                                "las células obtienen energía a partir de glucosa.")
+            },
+            2: {
+                "question": "¿Cuál es el principal producto de la respiración celular?",
+                "options": ["Glucosa", "Oxígeno", "Dióxido de carbono", "ATP"],
+                "correct_answer": "ATP",
+                "explanation": ("El ATP es el principal producto energético de la "
+                                "respiración celular.")
+            }
+        },
+        # Tema 2
+        "Tema 2": {
+            1: {
+                "question": ("¿Qué es la gluconeogénesis?"),
+                "options": [
+                    "Producción de glucosa a partir de aminoácidos",
+                    "Descomposición de glucógeno",
+                    "Conversión de lactato en glucosa",
+                    "Síntesis de ácidos grasos"
+                ],
+                "correct_answer": ("Producción de glucosa a partir de aminoácidos"),
+                "explanation": ("La gluconeogénesis es la síntesis de glucosa a partir "
+                                "de compuestos no carbohidratados.")
+            }
+        },
+        # Tema 3
+        "Tema 3": {
+            1: {
+                "question": ("¿Qué molécula es el principal transportador de energía en la célula?"),
+                "options": ["ADN", "ARN", "ATP", "NADH"],
+                "correct_answer": ("ATP"),
+                "explanation": ("El ATP (adenosín trifosfato) es la principal moneda "
+                                "energética en las células.")
+            }
+        }
+    }
+}
+
+@bot.message_handler(commands=['start'])
+def start_menu(message):
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add(telebot.types.KeyboardButton("Asignaturas"))
+    markup.add(telebot.types.KeyboardButton("Preguntas"))
+
+    welcome_message = 'Hola,\npara usar el bot observa las opciones del menú'
+    bot.send_message(message.chat.id, welcome_message, reply_markup=markup)
+
+@bot.message_handler(func=lambda message: message.text == 'Asignaturas')
+def show_asignaturas(message):
+    markup = telebot.types.InlineKeyboardMarkup()
+    for subject in encuestas.keys():
+        markup.add(telebot.types.InlineKeyboardButton(text=subject, callback_data=subject.lower()))
+
+    bot.send_message(message.chat.id, 'Selecciona una asignatura:', reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data in encuestas.keys())
+def show_topics(call):
+    subject = call.data.capitalize()
+
+    markup = telebot.types.InlineKeyboardMarkup()
+    for topic in encuestas[subject].keys():
+        markup.add(telebot.types.InlineKeyboardButton(text=topic, callback_data=f"tema_{topic}_{subject}"))
+
+    bot.send_message(call.message.chat.id, f'Selecciona un tema para {subject}:', reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("tema_"))
+def handle_topic_selection(call):
+    topic_info = call.data.split("_")
+    topic_name = topic_info[1]
+    subject = topic_info[2]
+
+    # Verificar si el tema existe
+    if subject in encuestas and topic_name in encuestas[subject]:
+        question_data = encuestas[subject][topic_name]
+
+        # Crear teclado para opciones
+        markup = telebot.types.InlineKeyboardMarkup()
+
+        # Acceder a la primera pregunta
+        if isinstance(question_data, dict) and question_data:
+            first_question_key = min(question_data.keys())  # Obtener la primera pregunta
+            first_question = question_data[first_question_key]
+
+            for option in first_question["options"]:
+                markup.add(telebot.types.InlineKeyboardButton(text=option, callback_data=f"respuesta_{topic_name}_{subject.lower()}_{option.replace(' ', '_')}"))
+
+            bot.send_message(call.message.chat.id, first_question["question"], reply_markup=markup)
+        else:
+            bot.send_message(call.message.chat.id, f"No se encontró preguntas válidas para {subject}, {topic_name}.")
+    else:
+        bot.send_message(call.message.chat.id, f"No se encontró el tema {topic_name} para {subject}.")
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("respuesta_"))
+def handle_answer_selection(call):
+    answer_info = call.data.split("_")
+    topic_name = answer_info[1]
+    subject = answer_info[2].capitalize()
+    selected_answer = answer_info[3].replace('_', ' ')  # Reemplazar '_' por espacio
+
+    # Obtener todas las preguntas del tema
+    question_data = encuestas[subject][topic_name]
+
+    # Encontrar la pregunta actual basada en la respuesta
+    current_question_index = None
+    for key, value in question_data.items():
+        if selected_answer in value["options"]:
+            current_question_index = key
+            break
+
+    # Verificar si se encontró la pregunta actual
+    if current_question_index is not None:
+        current_question_data = question_data[current_question_index]
+        correct_answer = current_question_data["correct_answer"]
+        explanation = current_question_data["explanation"]
+
+        if selected_answer.lower() == correct_answer.lower():
+            bot.send_message(call.message.chat.id, f"¡Correcto!")
+        else:
+            bot.send_message(call.message.chat.id, f"Incorrecto. La respuesta correcta es: {correct_answer}. {explanation}")
+
+        # Comprobar si hay más preguntas en el tema (incluyendo nuevas preguntas)
+        next_question_key = int(current_question_index) + 1
+        
+        # Si no hay más preguntas en el índice existente, buscar si hay nuevas preguntas
+        if next_question_key in question_data:
+            next_question_data = question_data[next_question_key]
+
+            # Crear teclado para opciones
+            markup = telebot.types.InlineKeyboardMarkup()
+            for option in next_question_data["options"]:
+                markup.add(telebot.types.InlineKeyboardButton(text=option, callback_data=f"respuesta_{topic_name}_{subject.lower()}_{option.replace(' ', '_')}"))
+
+            bot.send_message(call.message.chat.id, next_question_data["question"], reply_markup=markup)
+        else:
+            bot.send_message(call.message.chat.id, f"No hay más preguntas en {subject}, Tema {topic_name}.")
+            
+    else:
+        bot.send_message(call.message.chat.id, f"No se encontró la pregunta actual.")
+
+@bot.message_handler(func=lambda message: message.text == 'Preguntas')
+def show_preguntas(message):
+    markup = telebot.types.InlineKeyboardMarkup()
+    
+    # Opción para añadir pregunta
+    markup.add(telebot.types.InlineKeyboardButton(text="Añadir pregunta", callback_data="añadir_pregunta"))
+    
+    # Opción para eliminar pregunta
+    markup.add(telebot.types.InlineKeyboardButton(text="Eliminar pregunta", callback_data="eliminar_pregunta"))
+
+    # Opción para agregar asignatura
+    markup.add(telebot.types.InlineKeyboardButton(text="Agregar Asignatura", callback_data="agregar_asignatura"))
+
+    # Opción para agregar tema
+    markup.add(telebot.types.InlineKeyboardButton(text="Agregar Tema", callback_data="agregar_tema"))
+
+    bot.send_message(message.chat.id, 'Selecciona una opción:', reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == 'añadir_pregunta')
+def request_question_details(call):
+    bot.send_message(call.message.chat.id,
+                     ("Para agregar una pregunta, por favor proporciona los siguientes detalles:\n"
+                      "- Asignatura (Biomoléculas o Metabolismo)\n"
+                      "- Tema (Tema 1, Tema 2, Tema 3)\n"
+                      "- Pregunta\n"
+                      "- Opciones de respuesta (separadas por comas)\n"
+                      "- Respuesta correcta\n"
+                      "- Explicación de la respuesta correcta\n"
+                      "\nEjemplo:\n"
+                      "- Asignatura: Metabolismo\n"
+                      "- Tema: Tema 1\n"
+                      "- Pregunta: ¿Qué es la fotosíntesis?\n"
+                      "- Opciones: Proceso A, Proceso B, Proceso C\n"
+                      "- Respuesta correcta: Proceso A\n"
+                      "- Explicación: La fotosíntesis es el proceso mediante el cual las plantas producen su alimento."))
+
+    bot.register_next_step_handler(call.message, process_question_details)
+
+def process_question_details(message):
+   details = message.text.splitlines()
+
+   if len(details) < 6:
+       bot.send_message(message.chat.id,
+                        ("Por favor asegúrate de proporcionar todos los detalles requeridos. "
+                         f"Intenta nuevamente."))
+       return
+
+   subject = details[0].split(":")[1].strip()
+   topic = details[1].split(":")[1].strip()
+   
+   question_line = details[2].split(":")
+   
+   if len(question_line) < 2:
+       bot.send_message(message.chat.id,
+                        ("Formato incorrecto para la pregunta. "
+                         f"Asegúrate de usar 'Pregunta: [tu pregunta]'."))
+       return
+   
+   question = question_line[1].strip()
+   
+   options_line = details[3].split(":")[1].strip().split(",")
+   
+   correct_answer_line = details[4].split(":")[1].strip()
+   
+   explanation_line = details[5].split(":")[1].strip()
+
+   add_question(subject, topic, question, options_line, correct_answer_line.strip(), explanation_line.strip(), message)
+
+def add_question(subject, topic, question, options, correct_answer, explanation, message):
+   if subject in encuestas and topic in encuestas[subject]:
+       last_index = max(encuestas[subject][topic].keys(), default=0) + 1
+
+       encuestas[subject][topic][last_index] = {
+           'question': question,
+           'options': options,
+           'correct_answer': correct_answer,
+           'explanation': explanation
+       }
+
+       bot.send_message(message.chat.id,
+                        f"Pregunta añadida exitosamente al {subject}, {topic}.")
+   else:
+       bot.send_message(message.chat.id,
+                        f"No se encontró el tema {topic} en {subject}.")
+
+@bot.callback_query_handler(func=lambda call: call.data == 'eliminar_pregunta')
+def request_delete_details(call):
+   bot.send_message(call.message.chat.id,
+                    ("Para eliminar una pregunta, por favor proporciona los siguientes detalles:\n"
+                     "- Asignatura (Biomoléculas o Metabolismo)\n"
+                     "- Tema (Tema 1, Tema 2, Tema 3)\n"
+                     "- Pregunta (solo el texto de la pregunta)\n"
+                     "\nEjemplo:\n"
+                     "- Asignatura: Metabolismo\n"
+                     "- Tema: Tema 1\n"
+                     "- Pregunta: ¿Qué proceso convierte glucosa en energía?"))
+
+   bot.register_next_step_handler(call.message, process_delete_details)
+
+def process_delete_details(message):
+   details = message.text.splitlines()
+
+   if len(details) < 3:
+       bot.send_message(message.chat.id,
+                        ("Por favor asegúrate de proporcionar todos los detalles requeridos. "
+                         f"Intenta nuevamente."))
+       return
+
+   subject_name_line = details[0].split(":")
+   topic_name_line = details[1].split(":")
+   question_to_delete_line = details[2].split(":")
+   
+   if len(subject_name_line) < 2 or len(topic_name_line) < 2 or len(question_to_delete_line) < 2:
+       bot.send_message(message.chat.id,
+                        ("Formato incorrecto. Asegúrate que sea como:\n- Asignatura: [nombre]\n- Tema: [nombre]\n- Pregunta: [texto]"))
+       return
+   
+   subject_name = subject_name_line[1].strip()
+   topic_name = topic_name_line[1].strip()
+   question_to_delete = question_to_delete_line[1].strip()
+
+   delete_question(subject_name, topic_name, question_to_delete, message)
+
+def delete_question(subject_name, topic_name, question_to_delete, message):
+   if subject_name in encuestas and topic_name in encuestas[subject_name]:
+       questions_dict = encuestas[subject_name][topic_name]
+       
+       for key in list(questions_dict.keys()):
+           if questions_dict[key]["question"] == question_to_delete:
+               del questions_dict[key]
+               bot.send_message(message.chat.id,
+                                f"Pregunta eliminada exitosamente del {subject_name}, {topic_name}.")
+               return
+
+       bot.send_message(message.chat.id,
+                        f"No se encontró la pregunta '{question_to_delete}' en {subject_name}, {topic_name}.")
+   else:
+       bot.send_message(message.chat.id,
+                        f"No se encontró el tema {topic_name} en {subject_name}.")
+
+@bot.callback_query_handler(func=lambda call: call.data == 'agregar_asignatura')
+def request_add_subject(call):
+   bot.send_message(call.message.chat.id,
+                    ("Para agregar una nueva asignatura por favor proporciona su nombre.\n"
+                     "\nEjemplo:\n- Asignatura: Nueva Asignatura"))
+
+   bot.register_next_step_handler(call.message, process_add_subject)
+
+def process_add_subject(message):
+   subject_name_line = message.text.split(":")
+   
+   if len(subject_name_line) < 2:
+       bot.send_message(message.chat.id,
+                        ("Formato incorrecto para la asignatura. "
+                         f"Asegúrate de usar 'Asignatura: [nombre]'."))
+       return
+   
+   subject_name = subject_name_line[1].strip()
+
+   # Agregar nueva asignatura al diccionario si no existe ya.
+   if subject_name not in encuestas:
+       encuestas[subject_name] = {}
+       bot.send_message(message.chat.id,
+                        f"Asigantura '{subject_name}' añadida exitosamente.")
+   else:
+       bot.send_message(message.chat.id,
+                        f"La asignatura '{subject_name}' ya existe.")
+
+@bot.callback_query_handler(func=lambda call: call.data == 'agregar_tema')
+def request_add_topic(call):
+   bot.send_message(call.message.chat.id,
+                    ("Para agregar un nuevo tema por favor proporciona los siguientes detalles:\n"
+                     "- Asignatura (nombre exacto)\n"
+                     "- Nombre del nuevo tema\n"
+                     "\nEjemplo:\n- Asignatura: Biomoléculas\n- Nombre del nuevo tema: Tema 4"))
+
+   bot.register_next_step_handler(call.message, process_add_topic)
+
+def process_add_topic(message):
+   details = message.text.splitlines()
+
+   if len(details) < 2:
+       bot.send_message(message.chat.id,
+                        ("Por favor asegúrate de proporcionar todos los detalles requeridos. "
+                         f"Intenta nuevamente."))
+       return
+
+   subject_name_line = details[0].split(":")
+   new_topic_name_line = details[1].split(":")
+   
+   if len(subject_name_line) < 2 or len(new_topic_name_line) < 2:
+       bot.send_message(message.chat.id,
+                        ("Formato incorrecto. Asegúrate que sea como:\n- Asignatura: [nombre]\n- Nombre del nuevo tema: [nombre]"))
+       return
+   
+   subject_name = subject_name_line[1].strip()
+   new_topic_name = new_topic_name_line[1].strip()
+
+   # Agregar nuevo tema a la asignatura si existe.
+   if subject_name in encuestas:
+       encuestas[subject_name][new_topic_name] = {}
+       bot.send_message(message.chat.id,
+                        f"Tema '{new_topic_name}' añadido exitosamente a '{subject_name}'.")
+   else:
+       bot.send_message(message.chat.id,
+                        f"La asignatura '{subject_name}' no existe.")
+
+# Iniciar el bot
+if __name__ == "__main__":
+   bot.polling()
+
+
+
+
+
+
+
